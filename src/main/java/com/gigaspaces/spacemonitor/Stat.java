@@ -9,22 +9,26 @@ import java.util.Date;
  */
 public class Stat {
     long pid;
+    String hostname;
     Date timestamp;
     long totalMemory;
     long usedMemory;
     int totalThreads;
     double cpuPercent;
     long redologSize;
+    long gcCollectionCount;
 
     public String toCsv(){
         StringBuilder sb = new StringBuilder();
         sb.append(pid).append(",");
+        sb.append(hostname).append(",");
         sb.append(timestamp).append(",");
         sb.append(totalMemory).append(",");
         sb.append(usedMemory).append(",");
         sb.append(totalThreads).append(",");
         sb.append(cpuPercent).append(",");
-        sb.append(redologSize);
+        sb.append(redologSize).append(",");
+        sb.append(gcCollectionCount);
         return sb.toString();
 
     }
@@ -32,7 +36,7 @@ public class Stat {
         return getCsvHeader()+"\r\n"+toCsv();
     }
     public static String getCsvHeader(){
-        return "pid,timestamp,totalMemory,usedMemory,totalThreads,cpuPercent,redologSize";
+        return "pid,hostname,timestamp,totalMemory,usedMemory,totalThreads,cpuPercent,redologSize,gcCollectionCount";
     }
 
 }

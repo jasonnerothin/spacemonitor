@@ -21,25 +21,12 @@
     <!-- Enables to configure Spring beans through annotations   -->
     <context:annotation-config />
 
-    <!-- Enable @PostPrimary and others annotation support. -->
-    <os-core:annotation-support />
-
-    <!-- Enables using @Polling and @Notify annotations to creating polling and notify containers  -->
-    <os-events:annotation-support />
-
-    <!-- Enables using @RemotingService and other remoting related annotations   -->
-    <os-remoting:annotation-support />
-
-    <os-core:space id="space" url="jini://*/*/${grid.spacename}" />
-
-    <!-- Define the GigaSpace instance that the application will use to access the space  -->
-    <os-core:giga-space id="gigaSpace" space="space"/>
-
     <bean id="spaceMonitor" init-method="startCollection" class="com.gigaspaces.spacemonitor.SpaceMonitor">
-        <property name="gigaSpace" ref="gigaSpace"/>
         <property name="fileOutputPath" value="${spaceMonitor.fileOutputPath}"/>
         <property name="adminUser" value="${spaceMonitor.adminUser}"/>
         <property name="adminPassword" value="${spaceMonitor.adminPassword"/>
+        <property name="secured" value="${spaceMonitor.secure}"/>
+        <property name="locators" value="${spaceMonitor.locators}"/>
     </bean>
 
 </beans>
