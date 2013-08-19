@@ -12,10 +12,12 @@ public class Stat {
     String hostname;
     Date timestamp;
     long totalMemory;
-    long usedMemory;
+    long heapUsedMemory;
+    long nonHeapUsedMemory;
     int totalThreads;
     double cpuPercent;
     long redologSize;
+    long redologSendBytesPerSecond;
     long gcCollectionCount;
 
     public String toCsv(){
@@ -24,11 +26,13 @@ public class Stat {
         sb.append(hostname).append(",");
         sb.append(timestamp).append(",");
         sb.append(totalMemory).append(",");
-        sb.append(usedMemory).append(",");
+        sb.append(heapUsedMemory).append(",");
+        sb.append(nonHeapUsedMemory).append(",");
         sb.append(totalThreads).append(",");
         sb.append(cpuPercent).append(",");
         sb.append(redologSize).append(",");
-        sb.append(gcCollectionCount);
+        sb.append(gcCollectionCount).append(",");
+        sb.append(redologSendBytesPerSecond);
         return sb.toString();
 
     }
@@ -36,7 +40,7 @@ public class Stat {
         return getCsvHeader()+"\r\n"+toCsv();
     }
     public static String getCsvHeader(){
-        return "pid,hostname,timestamp,totalMemory,usedMemory,totalThreads,cpuPercent,redologSize,gcCollectionCount";
+        return "pid,hostname,timestamp,totalMemory,heapUsedMemory,nonHeapUsedMemory,totalThreads,cpuPercent,redologSize,gcCollectionCount,redologSendBytesPerSecond";
     }
 
 }

@@ -1,19 +1,23 @@
 package com.gigaspaces.spacemonitor;
 
 import com.gigaspaces.cluster.activeelection.SpaceMode;
+import com.j_spaces.core.filters.ReplicationStatistics;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminFactory;
 import org.openspaces.admin.gsc.GridServiceContainer;
 import org.openspaces.admin.gsc.GridServiceContainers;
+import org.openspaces.admin.machine.Machines;
 import org.openspaces.admin.space.Space;
 import org.openspaces.admin.space.SpacePartition;
+import org.openspaces.admin.space.Spaces;
 import org.openspaces.admin.vm.VirtualMachine;
-import org.openspaces.core.GigaSpace;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -29,7 +33,6 @@ public class SpaceMonitor implements Runnable{
     String adminPassword;
     boolean secured = false;
     String locators = null;
-    FileWriter fw = null;
 
     Map<Long,Stat> lastCollectedStat = new HashMap<Long, Stat>();
 
@@ -89,8 +92,9 @@ public class SpaceMonitor implements Runnable{
 
     public void startCollection(){
         try{
-            fw = new FileWriter(fileOutputPath);
-            fw.write(Stat.getCsvHeader()+"\r\n");
+            PrintWriter pw = new PrintWriter(new FileWriter(fileOutputPath,true));
+            pw.println(Stat.getCsvHeader());
+            pw.close();
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -104,7 +108,14 @@ public class SpaceMonitor implements Runnable{
             factory.credentials(getAdminUser(),getAdminPassword());
         }
         factory.addLocators(locators);
+        factory.discoverUnmanagedSpaces();
         Admin admin = factory.createAdmin();
+        Machines machines = admin.getMachines();
+        machines.waitFor(1);
+        GridServiceContainers gscs = admin.getGridServiceContainers();
+        gscs.waitFor(1);
+        Spaces spaces = admin.getSpaces();
+        spaces.waitFor("mySpace");
         while(true){
             collectStats(admin);
             writeStats();
@@ -129,11 +140,13 @@ public class SpaceMonitor implements Runnable{
                 stat.pid = vm.getDetails().getPid();
             }
             stat.totalMemory = vm.getDetails().getMemoryHeapMaxInBytes();
-            stat.usedMemory = vm.getStatistics().getMemoryHeapCommittedInBytes();
+            stat.heapUsedMemory = vm.getStatistics().getMemoryHeapUsedInBytes();
             stat.cpuPercent = vm.getStatistics().getCpuPerc();
             stat.gcCollectionCount = vm.getStatistics().getGcCollectionCount();
             stat.hostname = vm.getMachine().getHostName();
             stat.totalThreads = vm.getStatistics().getThreadCount();
+            stat.nonHeapUsedMemory = vm.getStatistics().getMemoryNonHeapUsedInBytes();
+            stat.timestamp = new Date();
             lastCollectedStat.put(vm.getDetails().getPid(),stat);
         }
     }
@@ -142,34 +155,43 @@ public class SpaceMonitor implements Runnable{
         space.waitFor(space.getNumberOfInstances(), SpaceMode.PRIMARY,10 , TimeUnit.SECONDS);
         SpacePartition partitions[]= space.getPartitions();
         long redologSize = 0;
+        long redologBytesPerSecond = 0;
         for (int i=0;i<partitions.length;i++)
         {
             SpacePartition partition = partitions[i];
-
             redologSize += partition.getPrimary().getStatistics().getReplicationStatistics().
              getOutgoingReplication().getRedoLogSize();
+
+            List<ReplicationStatistics.OutgoingChannel> channelList = partition.getPrimary().getStatistics().getReplicationStatistics().getOutgoingReplication().getChannels();
+            for(ReplicationStatistics.OutgoingChannel channel : channelList){
+                redologBytesPerSecond += channel.getSendBytesPerSecond();
+            }
+
         }
         for(Long pid : lastCollectedStat.keySet()){
             Stat stat = lastCollectedStat.get(pid);
             stat.redologSize = redologSize;
+            stat.redologSendBytesPerSecond = redologBytesPerSecond;
         }
     }
     public void writeStats(){
         try{
+            PrintWriter pw = new PrintWriter(new FileWriter(fileOutputPath,true));
             for(Stat stat : lastCollectedStat.values()){
-                fw.write(stat.toCsv()+"\r\n");
+                pw.println(stat.toCsv());
             }
+            pw.close();
         }catch(Exception e){
             e.printStackTrace();
         }
 
     }
     public static void main(String args[]){
-        System.setProperty("spaceMonitor.fileOutputPath","/tmp/spacemonitor.log");
-        System.setProperty("spaceMonitor.adminUser","gsadmin");
-        System.setProperty("spaceMonitor.adminPassword","password");
-        System.setProperty("spaceMonitor.locators","gigamemgrid.kohls.com:4170");
-        System.setProperty("spaceMonitor.secured","false");
+        System.setProperty("spaceMonitor.fileOutputPath",System.getProperty("spaceMonitor.fileOutputPath","/logs/stress/spacemonitor.log"));
+        System.setProperty("spaceMonitor.adminUser",System.getProperty("spaceMonitor.adminUser","deployer"));
+        System.setProperty("spaceMonitor.adminPassword",System.getProperty("spaceMonitor.adminPassword","password"));
+        System.setProperty("spaceMonitor.locators",System.getProperty("spaceMonitor.locators","localhost:4170"));
+        System.setProperty("spaceMonitor.secured",System.getProperty("spaceMonitor.secured","true"));
 
         ClassPathXmlApplicationContext appContext = new ClassPathXmlApplicationContext("/META-INF/spring/pu.xml");
         SpaceMonitor spaceMonitor = (SpaceMonitor)appContext.getBean("spaceMonitor");
