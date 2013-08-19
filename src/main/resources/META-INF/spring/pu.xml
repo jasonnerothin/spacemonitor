@@ -6,12 +6,14 @@
    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
     <context:annotation-config />
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    </bean>
 
     <bean id="spaceMonitor" init-method="startCollection" class="com.gigaspaces.spacemonitor.SpaceMonitor">
         <property name="fileOutputPath" value="${spaceMonitor.fileOutputPath}"/>
         <property name="adminUser" value="${spaceMonitor.adminUser}"/>
-        <property name="adminPassword" value="${spaceMonitor.adminPassword"/>
-        <property name="secured" value="${spaceMonitor.secure}"/>
+        <property name="adminPassword" value="${spaceMonitor.adminPassword}"/>
+        <property name="secured" value="${spaceMonitor.secured}"/>
         <property name="locators" value="${spaceMonitor.locators}"/>
     </bean>
 

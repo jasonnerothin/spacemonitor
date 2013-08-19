@@ -71,12 +71,12 @@ public class SpaceMonitor implements Runnable{
         this.adminPassword = adminPassword;
     }
 
-    public boolean isSecured() {
-        return secured;
+    public String getSecured(){
+        return String.valueOf(secured);
     }
 
-    public void setSecured(boolean secured) {
-        this.secured = secured;
+    public void setSecured(String secured) {
+        this.secured = Boolean.valueOf(secured);
     }
 
     public String getLocators() {
@@ -100,7 +100,9 @@ public class SpaceMonitor implements Runnable{
     @Override
     public void run() {
         AdminFactory factory = new AdminFactory();
-        factory.credentials(getAdminUser(),getAdminPassword());
+        if(secured){
+            factory.credentials(getAdminUser(),getAdminPassword());
+        }
         factory.addLocators(locators);
         Admin admin = factory.createAdmin();
         while(true){
@@ -166,11 +168,12 @@ public class SpaceMonitor implements Runnable{
         System.setProperty("spaceMonitor.fileOutputPath","/tmp/spacemonitor.log");
         System.setProperty("spaceMonitor.adminUser","gsadmin");
         System.setProperty("spaceMonitor.adminPassword","password");
-        System.setProperty("spaceMonitor.locators","gigamemgrid1:4170");
+        System.setProperty("spaceMonitor.locators","gigamemgrid.kohls.com:4170");
         System.setProperty("spaceMonitor.secured","false");
 
-        ClassPathXmlApplicationContext appContext = new ClassPathXmlApplicationContext("pu.xml");
+        ClassPathXmlApplicationContext appContext = new ClassPathXmlApplicationContext("/META-INF/spring/pu.xml");
         SpaceMonitor spaceMonitor = (SpaceMonitor)appContext.getBean("spaceMonitor");
+        while(true){}
         //The startCollection automatically runs
 
     }
