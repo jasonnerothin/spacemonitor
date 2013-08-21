@@ -1,15 +1,14 @@
 package com.gigaspaces.spacemonitor;
 
 import com.gigaspaces.cluster.activeelection.SpaceMode;
+import com.gigaspaces.cluster.replication.async.mirror.MirrorStatistics;
 import com.j_spaces.core.filters.ReplicationStatistics;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminFactory;
 import org.openspaces.admin.gsc.GridServiceContainer;
 import org.openspaces.admin.gsc.GridServiceContainers;
 import org.openspaces.admin.machine.Machines;
-import org.openspaces.admin.space.Space;
-import org.openspaces.admin.space.SpacePartition;
-import org.openspaces.admin.space.Spaces;
+import org.openspaces.admin.space.*;
 import org.openspaces.admin.vm.VirtualMachine;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
@@ -129,6 +128,8 @@ public class SpaceMonitor implements Runnable{
     public void collectStats(Admin admin){
         collectJVMStats(admin);
         collectRedologStats(admin);
+        collectMirrorStats(admin);
+        collectActivityStats(admin);
     }
     public void collectJVMStats(Admin admin){
         GridServiceContainer containers[] = admin.getGridServiceContainers().getContainers();
@@ -174,6 +175,66 @@ public class SpaceMonitor implements Runnable{
             stat.redologSendBytesPerSecond = redologBytesPerSecond;
         }
     }
+    public void collectMirrorStats(Admin admin){
+        long mirrorTotalOperations=0;
+        long mirrorSuccessfulOperations=0;
+        long mirrorFailedOperations=0;
+
+        for (Space space : admin.getSpaces()) {
+            for (SpaceInstance spaceInstance : space) {
+                MirrorStatistics mirrorStat = spaceInstance.getStatistics().getMirrorStatistics();
+                 // check if this instance is mirror
+                 if(mirrorStat != null)
+                 {
+
+                    mirrorTotalOperations= mirrorStat.getOperationCount();
+                    mirrorSuccessfulOperations = mirrorStat.getSuccessfulOperationCount();
+                    mirrorFailedOperations = mirrorStat.getFailedOperationCount();
+                 }
+            }
+
+        }
+        for(Long pid : lastCollectedStat.keySet()){
+            Stat stat = lastCollectedStat.get(pid);
+            stat.mirrorTotalOperations = mirrorTotalOperations;
+            stat.mirrorSuccessfulOperations = mirrorSuccessfulOperations;
+            stat.mirrorFailedOperations = mirrorFailedOperations;
+
+        }
+    }
+    public void collectActivityStats(Admin admin){
+        double readCountPerSecond = 0;
+        double updateCountPerSecond = 0;
+        double writeCountPerSecond = 0;
+        double changePerSecond = 0;
+        double executePerSecond = 0;
+        int processorQueueSize = 0;
+        long activeTransactionCount = 0;
+
+            for (Space space : admin.getSpaces()) {
+                for (SpaceInstance spaceInstance : space) {
+                    SpaceInstanceStatistics stats = spaceInstance.getStatistics();
+
+                    readCountPerSecond += stats.getReadPerSecond();
+                    updateCountPerSecond += stats.getUpdatePerSecond();
+                    writeCountPerSecond += stats.getWritePerSecond();
+                    changePerSecond += stats.getChangePerSecond();
+                    executePerSecond += stats.getExecutePerSecond();
+                    processorQueueSize += stats.getProcessorQueueSize();
+                    activeTransactionCount += stats.getActiveTransactionCount();
+                }
+            }
+            for(Long pid : lastCollectedStat.keySet()){
+                Stat stat = lastCollectedStat.get(pid);
+                stat.readCountPerSecond = readCountPerSecond;
+                stat.updateCountPerSecond = updateCountPerSecond;
+                stat.writeCountPerSecond = writeCountPerSecond;
+                stat.changePerSecond = changePerSecond;
+                stat.executePerSecond = executePerSecond;
+                stat.processorQueueSize = processorQueueSize;
+                stat.activeTransactionCount = activeTransactionCount;
+            }
+        }
     public void writeStats(){
         try{
             PrintWriter pw = new PrintWriter(new FileWriter(fileOutputPath,true));
