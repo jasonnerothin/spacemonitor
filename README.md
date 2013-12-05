@@ -1,7 +1,7 @@
 spacemonitor
 ============
 
-A processing unit that spits out stats about what's going on in GSCs,
+A runnable jar that spits out stats about what's going on in GSCs,
 using the Admin api.
 
 Designed for a mirror pu, the following stats are monitored:
